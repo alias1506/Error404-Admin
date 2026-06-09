@@ -1,28 +1,12 @@
 import { useState, useEffect } from "react";
 import PageMeta from "../../components/common/PageMeta";
-import Swal from "sweetalert2";
+import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import Pagination from "../../components/common/Pagination";
 import Select from "../../components/form/Select";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const SwalToast = Swal.mixin({
-  toast: true,
-  position: 'top-end',
-  showConfirmButton: false,
-  timer: 3000,
-  timerProgressBar: true,
-  background: '#18181b',
-  color: '#ffffff',
-  willOpen: (popup) => {
-    const container = popup.parentElement as HTMLElement;
-    if (container) container.style.zIndex = '99999';
-  },
-  didOpen: (toast) => {
-    toast.addEventListener('mouseenter', Swal.stopTimer);
-    toast.addEventListener('mouseleave', Swal.resumeTimer);
-  }
-});
+import { SwalToast } from "../../components/ui/toast/toast";
 
 type Round = {
   id: string;
@@ -72,13 +56,22 @@ export default function RoundsPage() {
       const response = await fetch(`${API_URL}/api/rounds`);
       if (response.ok) {
         const data = await response.json();
-        const formattedRounds = data.map((r: any) => ({
-          id: r._id,
-          name: r.name,
-          duration: r.duration,
-          status: r.status,
-          remainingSeconds: r.status === "Active" ? r.duration * 60 : undefined,
-        }));
+        const formattedRounds = data.map((r: any) => {
+          let remSecs = undefined;
+          if (r.status === "Active" && r.updatedAt) {
+            const startTime = new Date(r.updatedAt).getTime();
+            const durationMs = r.duration * 60 * 1000;
+            const now = Date.now();
+            remSecs = Math.max(0, Math.floor((startTime + durationMs - now) / 1000));
+          }
+          return {
+            id: r._id,
+            name: r.name,
+            duration: r.duration,
+            status: r.status,
+            remainingSeconds: remSecs,
+          };
+        });
         // Sort ascending by MongoDB ObjectId (chronological order)
         formattedRounds.sort((a: Round, b: Round) => a.id.localeCompare(b.id));
         setRounds(formattedRounds);
@@ -188,7 +181,6 @@ export default function RoundsPage() {
   };
 
   const toggleStatus = async (id: string, currentStatus: Round["status"]) => {
-    if (currentStatus === "Completed") return;
     const newStatus = currentStatus === "Active" ? "Completed" : "Active";
     
     // Optimistic UI update to instantly show checkmark and start timer
@@ -208,6 +200,7 @@ export default function RoundsPage() {
       if (!response.ok) {
         await fetchRounds(); // Revert on failure
       } else {
+        await fetchRounds(); // Sync actual server time
         SwalToast.fire({ icon: 'success', title: `Round marked as ${newStatus}` });
       }
     } catch (error) {
@@ -221,11 +214,7 @@ export default function RoundsPage() {
       text: "You won't be able to revert this!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-      background: "#18181b",
-      color: "#fff",
+      confirmButtonText: "Yes, delete it!"
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
@@ -416,23 +405,21 @@ export default function RoundsPage() {
                           <td className="py-4 px-2 text-right">
                             <div className="flex items-center justify-end gap-3">
                               {/* Activate/Deactivate Toggle */}
-                              {round.status !== "Completed" && (
-                                <button
-                                  onClick={() => toggleStatus(round.id, round.status)}
-                                  className={`transition-colors ${
-                                    round.status === "Active" 
-                                      ? "text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300" 
-                                      : "text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
-                                  }`}
-                                  title={round.status === "Active" ? "Complete Round" : "Activate Round"}
-                                >
-                                  {round.status === "Active" ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                  ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
-                                  )}
-                                </button>
-                              )}
+                              <button
+                                onClick={() => toggleStatus(round.id, round.status)}
+                                className={`transition-colors ${
+                                  round.status === "Active" 
+                                    ? "text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300" 
+                                    : "text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
+                                }`}
+                                title={round.status === "Active" ? "Complete Round" : "Activate Round"}
+                              >
+                                {round.status === "Active" ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                                )}
+                              </button>
                               
                               {/* Edit Round */}
                               <button

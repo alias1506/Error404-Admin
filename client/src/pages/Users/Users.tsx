@@ -1,30 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import Swal from "sweetalert2";
+import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const SwalToast = Swal.mixin({
-  toast: true,
-  position: 'top-end',
-  showConfirmButton: false,
-  timer: 3000,
-  timerProgressBar: true,
-  background: '#18181b',
-  color: '#ffffff',
-  customClass: {
-    popup: 'border border-zinc-700 rounded-xl text-sm shadow-2xl',
-    timerProgressBar: 'bg-zinc-500',
-  },
-  willOpen: (popup) => {
-    const container = popup.parentElement as HTMLElement;
-    if (container) container.style.zIndex = '99999';
-  },
-  didOpen: (t) => {
-    t.onmouseenter = Swal.stopTimer;
-    t.onmouseleave = Swal.resumeTimer;
-  }
-});
+import { SwalToast } from "../../components/ui/toast/toast";
 import { Modal } from "../../components/ui/modal";
 import {
   Table,
@@ -127,23 +107,12 @@ export default function Users() {
   };
 
   const handleDelete = async (user: User) => {
-    const isDark = document.documentElement.classList.contains('dark');
     const result = await Swal.fire({
       title: 'Are you sure?',
       text: `Do you really want to delete ${user.username}? This cannot be undone.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      background: isDark ? '#1f2937' : '#ffffff',
-      color: isDark ? '#f3f4f6' : '#111827',
-      customClass: {
-        popup: 'rounded-3xl border border-gray-100 dark:border-white/10 shadow-2xl',
-        title: 'text-xl font-bold',
-        htmlContainer: 'text-gray-500 dark:text-gray-400',
-        confirmButton: 'bg-error-500 hover:bg-error-600 text-white px-6 py-2.5 rounded-xl font-medium transition-colors mr-3 shadow-lg shadow-error-500/20',
-        cancelButton: 'bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 text-gray-700 px-6 py-2.5 rounded-xl font-medium transition-colors'
-      },
-      buttonsStyling: false
+      confirmButtonText: 'Yes, delete it!'
     });
 
     if (result.isConfirmed) {

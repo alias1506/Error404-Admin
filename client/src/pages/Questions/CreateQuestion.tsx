@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import PageMeta from "../../components/common/PageMeta";
 import Swal from "sweetalert2";
 import Editor from "@monaco-editor/react";
-import { Modal } from "../../components/ui/modal";
-import { useDropzone } from "react-dropzone";
+import ImportJsonModal from "./ImportJsonModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -25,6 +24,8 @@ type LanguageCode = {
   correctSolution: string;
 };
 
+import { SwalToast } from "../../components/ui/toast/toast";
+
 export default function CreateQuestion() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [formData, setFormData] = useState({
@@ -39,13 +40,6 @@ export default function CreateQuestion() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  const onDrop = (acceptedFiles: File[]) => {
-    console.log("Dropped files:", acceptedFiles);
-  };
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { "application/json": [".json"] }
-  });
 
   useEffect(() => {
     const fetchRounds = async () => {
@@ -140,15 +134,12 @@ export default function CreateQuestion() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (languageCodes.length === 0) {
-      Swal.fire({
+      SwalToast.fire({
         icon: "error",
-        title: "Error",
-        text: "Please add at least one language with code.",
-        background: "#18181b",
-        color: "#fff",
+        title: "Please add at least one language with code."
       });
       return;
     }
@@ -158,19 +149,37 @@ export default function CreateQuestion() {
       codes: languageCodes
     };
     
-    Swal.fire({
-      icon: "success",
-      title: "Success",
-      text: "Question created successfully (Frontend Simulation)",
-      toast: true,
-      position: "top-end",
-      showConfirmButton: false,
-      timer: 3000,
-      background: "#18181b",
-      color: "#fff",
-    });
-    
-    console.log("Submitting:", payload);
+    try {
+      const response = await fetch(`${API_URL}/api/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        SwalToast.fire({
+          icon: "success",
+          title: "Question created successfully!"
+        });
+        
+        setFormData({
+          title: "",
+          difficulty: "Easy",
+          xpReward: "10",
+          roundId: rounds.length > 0 ? rounds[0].id : "",
+        });
+        setLanguageCodes([]);
+        setActiveTab(null);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create question");
+      }
+    } catch (error: any) {
+        SwalToast.fire({
+          icon: "error",
+          title: error.message || "Something went wrong"
+        });
+    }
   };
 
   return (
@@ -366,27 +375,6 @@ export default function CreateQuestion() {
                     <div className="grid grid-cols-2 gap-0 divide-x divide-gray-200 dark:divide-gray-700 flex-1 min-h-0">
                       <div className="flex flex-col bg-[#1e1e1e] flex-1 min-h-0">
                         <div className="px-4 py-2 bg-black/40 border-b border-gray-800 flex justify-between items-center shrink-0">
-                          <span className="text-xs font-mono text-red-400">Buggy Code (Starter)</span>
-                        </div>
-                        <div className="flex-1 min-h-0 relative">
-                          <Editor
-                            height="100%"
-                            theme="vs-dark"
-                            language={activeTab === 'c' || activeTab === 'cpp' ? 'cpp' : activeTab}
-                            value={languageCodes.find((lc) => lc.language === activeTab)?.buggyCode}
-                            onChange={(val) => updateLanguageCode(activeTab, "buggyCode", val)}
-                            options={{
-                              minimap: { enabled: false },
-                              fontSize: 14,
-                              padding: { top: 16, bottom: 16 },
-                              scrollBeyondLastLine: false,
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col bg-[#1e1e1e] flex-1 min-h-0">
-                        <div className="px-4 py-2 bg-black/40 border-b border-gray-800 flex justify-between items-center shrink-0">
                           <span className="text-xs font-mono text-green-400">Correct Solution</span>
                         </div>
                         <div className="flex-1 min-h-0 relative">
@@ -396,6 +384,27 @@ export default function CreateQuestion() {
                             language={activeTab === 'c' || activeTab === 'cpp' ? 'cpp' : activeTab}
                             value={languageCodes.find((lc) => lc.language === activeTab)?.correctSolution}
                             onChange={(val) => updateLanguageCode(activeTab, "correctSolution", val)}
+                            options={{
+                              minimap: { enabled: false },
+                              fontSize: 14,
+                              padding: { top: 16, bottom: 16 },
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col bg-[#1e1e1e] flex-1 min-h-0">
+                        <div className="px-4 py-2 bg-black/40 border-b border-gray-800 flex justify-between items-center shrink-0">
+                          <span className="text-xs font-mono text-red-400">Buggy Code (Starter)</span>
+                        </div>
+                        <div className="flex-1 min-h-0 relative">
+                          <Editor
+                            height="100%"
+                            theme="vs-dark"
+                            language={activeTab === 'c' || activeTab === 'cpp' ? 'cpp' : activeTab}
+                            value={languageCodes.find((lc) => lc.language === activeTab)?.buggyCode}
+                            onChange={(val) => updateLanguageCode(activeTab, "buggyCode", val)}
                             options={{
                               minimap: { enabled: false },
                               fontSize: 14,
@@ -429,31 +438,11 @@ export default function CreateQuestion() {
         </div>
       </div>
 
-      <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} className="max-w-[500px] p-8 !rounded-[32px]">
-        <div className="pr-12 mb-6">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Import JSON File</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload a previously saved challenge</p>
-        </div>
-        <div 
-          {...getRootProps()} 
-          className={`flex flex-col items-center justify-center w-full h-56 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
-            isDragActive 
-              ? "border-brand-500 bg-brand-500/10 scale-[1.02]" 
-              : "border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-white/5"
-          }`}
-        >
-          <input {...getInputProps()} />
-          <div className="w-14 h-14 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-transform group-hover:scale-110">
-            <svg className="w-7 h-7 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center px-4">
-            {isDragActive ? "Drop the JSON file here..." : "Drag & drop a JSON file here, or click to select"}
-          </p>
-          <p className="text-xs text-gray-400 mt-2">Only .json files are supported</p>
-        </div>
-      </Modal>
+      <ImportJsonModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+        onSuccess={() => {}} 
+      />
     </>
   );
 }
