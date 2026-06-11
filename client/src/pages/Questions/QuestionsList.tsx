@@ -28,7 +28,7 @@ export default function QuestionsList() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -63,6 +63,13 @@ export default function QuestionsList() {
   );
 
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
+  
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   const currentQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleDelete = async (q: Question) => {
@@ -149,7 +156,7 @@ export default function QuestionsList() {
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <div className="max-w-full overflow-x-auto">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
                 <TableCell isHeader className="w-[35%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Title</TableCell>
@@ -207,13 +214,13 @@ export default function QuestionsList() {
               ))}
               {filteredQuestions.length === 0 && (
                 <TableRow>
-                  <TableCell className="px-5 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={6}>
+                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={6}>
                     <div className="flex flex-col items-center justify-center">
-                      <svg className="w-12 h-12 mb-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <p className="text-lg font-semibold text-gray-600 dark:text-gray-300">No questions found</p>
-                      <p className="text-sm mt-1">Try adjusting your search query.</p>
+                      <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No questions found</p>
+                      <p className="text-sm">Try adjusting your search or refresh the data.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -223,7 +230,7 @@ export default function QuestionsList() {
         </div>
       </div>
 
-      <div className="mt-6 flex justify-end">
+      <div className="mt-4 flex justify-end">
         <Pagination 
           currentPage={currentPage}
           totalPages={totalPages}
@@ -245,6 +252,7 @@ export default function QuestionsList() {
           setSelectedQuestionId(null);
         }}
         questionId={selectedQuestionId}
+        onSuccess={loadQuestions}
       />
 
       <ImportJsonModal

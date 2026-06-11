@@ -5,10 +5,10 @@ const Question = require('../models/Question');
 // @access  Public
 exports.createQuestion = async (req, res) => {
   try {
-    const { title, difficulty, xpReward, roundId, codes } = req.body;
+    const { title, difficulty, xpReward, roundId, codes, expectedOutput } = req.body;
 
-    if (!title || !difficulty || !xpReward || !roundId || !codes || codes.length === 0) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+    if (!title || !difficulty || !xpReward || !roundId || !codes || codes.length === 0 || !expectedOutput) {
+      return res.status(400).json({ message: 'Please provide all required fields including expected output' });
     }
 
     const question = await Question.create({
@@ -16,7 +16,8 @@ exports.createQuestion = async (req, res) => {
       difficulty,
       xpReward,
       roundId,
-      codes
+      codes,
+      expectedOutput
     });
 
     res.status(201).json(question);
@@ -52,6 +53,34 @@ exports.getQuestionById = async (req, res) => {
   } catch (error) {
     console.error('Error fetching question:', error);
     res.status(500).json({ message: 'Server error fetching question', error: error.message });
+  }
+};
+
+// @desc    Update a question
+// @route   PUT /api/questions/:id
+// @access  Public
+exports.updateQuestion = async (req, res) => {
+  try {
+    const { title, difficulty, xpReward, roundId, codes, expectedOutput } = req.body;
+
+    const question = await Question.findById(req.params.id);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    if (title) question.title = title;
+    if (difficulty) question.difficulty = difficulty;
+    if (xpReward) question.xpReward = xpReward;
+    if (roundId) question.roundId = roundId;
+    if (codes) question.codes = codes;
+    if (expectedOutput) question.expectedOutput = expectedOutput;
+
+    await question.save();
+    
+    res.json(question);
+  } catch (error) {
+    console.error('Error updating question:', error);
+    res.status(500).json({ message: 'Server error updating question', error: error.message });
   }
 };
 

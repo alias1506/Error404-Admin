@@ -74,9 +74,15 @@ exports.deleteRound = async (req, res, next) => {
       return res.status(404).json({ message: 'Round not found' });
     }
 
+// Require Question model at the top if not already (we'll just use mongoose.model)
+    const Question = require('../models/Question');
+    
+    // Delete all questions associated with this round
+    await Question.deleteMany({ roundId: id });
+
     await round.deleteOne();
     
-    res.status(200).json({ message: 'Round removed' });
+    res.status(200).json({ message: 'Round and its associated questions removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

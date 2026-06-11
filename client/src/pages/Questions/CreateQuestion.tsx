@@ -33,6 +33,7 @@ export default function CreateQuestion() {
     difficulty: "Easy",
     xpReward: "10",
     roundId: "",
+    expectedOutput: "",
   });
 
   const [languageCodes, setLanguageCodes] = useState<LanguageCode[]>([]);
@@ -167,6 +168,7 @@ export default function CreateQuestion() {
           difficulty: "Easy",
           xpReward: "10",
           roundId: rounds.length > 0 ? rounds[0].id : "",
+          expectedOutput: "",
         });
         setLanguageCodes([]);
         setActiveTab(null);
@@ -208,10 +210,10 @@ export default function CreateQuestion() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full border border-gray-200 p-4 rounded-xl dark:border-gray-800">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2 flex-1 min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full border border-gray-200 p-3 rounded-xl dark:border-gray-800">
               <div className="md:col-span-3">
-                <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+                <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                   Question Title
                 </label>
                 <input
@@ -220,13 +222,13 @@ export default function CreateQuestion() {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
+                  className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
                   placeholder="e.g. Reverse a String"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+                <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                   Difficulty
                 </label>
                 <div className="relative">
@@ -234,7 +236,7 @@ export default function CreateQuestion() {
                     name="difficulty"
                     value={formData.difficulty}
                     onChange={handleChange}
-                    className="h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    className="h-10 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                   >
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
@@ -249,7 +251,7 @@ export default function CreateQuestion() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+                <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                   XP Reward
                 </label>
                 <input
@@ -258,12 +260,12 @@ export default function CreateQuestion() {
                   value={formData.xpReward}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
+                  className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+                <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                   Round
                 </label>
                 <div className="relative">
@@ -271,7 +273,7 @@ export default function CreateQuestion() {
                     name="roundId"
                     value={formData.roundId}
                     onChange={handleChange}
-                    className="h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    className="h-10 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                   >
                     {rounds.length === 0 ? (
                       <option value="" disabled className="text-gray-700 dark:bg-gray-900 dark:text-gray-400">No rounds available</option>
@@ -290,9 +292,24 @@ export default function CreateQuestion() {
                   </span>
                 </div>
               </div>
+
+              <div className="md:col-span-3 mt-1">
+                <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
+                  Expected Output
+                </label>
+                <textarea
+                  name="expectedOutput"
+                  value={formData.expectedOutput}
+                  onChange={handleChange}
+                  required
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500 font-mono"
+                  placeholder="e.g. Hello World"
+                />
+              </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800 w-full flex flex-col gap-3 flex-1 min-h-0">
+            <div className="rounded-xl border border-gray-200 p-3 dark:border-gray-800 w-full flex flex-col gap-2 flex-1 min-h-0">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-800 gap-2">
                 <div>
                   <h4 className="text-base font-semibold text-gray-800 dark:text-white/90">
@@ -426,7 +443,7 @@ export default function CreateQuestion() {
               )}
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pb-1">
               <button
                 type="submit"
                 className="rounded-lg bg-blue-600 px-10 py-2.5 text-sm font-bold tracking-wide text-white hover:bg-blue-700 transition shadow-md"

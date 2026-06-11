@@ -11,6 +11,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/rounds', require('./routes/roundRoutes'));
 app.use('/api/questions', require('./routes/questionRoutes'));
+app.use('/api/submissions', require('./routes/submissionRoutes'));
 
 app.get('/api', (req, res) => {
   res.json({ message: 'Error404 Admin Backend is running!' });

@@ -19,6 +19,7 @@ const SAMPLE_JSON = [
     "title": "Your Question Title Here",
     "difficulty": "Easy",
     "xpReward": 10,
+    "expectedOutput": "Hello World",
     "codes": [
       {
         "language": "c",

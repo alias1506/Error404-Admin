@@ -27,15 +27,17 @@ interface EditQuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   questionId: string | null;
+  onSuccess?: () => void;
 }
 
-export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQuestionModalProps) {
+export default function EditQuestionModal({ isOpen, onClose, questionId, onSuccess }: EditQuestionModalProps) {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     difficulty: "Easy",
     xpReward: "10",
     roundId: "",
+    expectedOutput: "",
   });
 
   const [languageCodes, setLanguageCodes] = useState<LanguageCode[]>([]);
@@ -67,7 +69,8 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
                 title: data.title,
                 difficulty: data.difficulty,
                 xpReward: data.xpReward.toString(),
-                roundId: data.roundId?._id || ""
+                roundId: data.roundId?._id || "",
+                expectedOutput: data.expectedOutput || ""
               });
               
               setLanguageCodes(data.codes);
@@ -144,7 +147,7 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (languageCodes.length === 0) {
       SwalToast.fire({
@@ -154,12 +157,35 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
       return;
     }
     
-    SwalToast.fire({
-      icon: "success",
-      title: "Question updated successfully"
-    });
+    const payload = {
+      ...formData,
+      codes: languageCodes
+    };
     
-    onClose();
+    try {
+      const response = await fetch(`${API_URL}/api/questions/${questionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        SwalToast.fire({
+          icon: "success",
+          title: "Question updated successfully"
+        });
+        if (onSuccess) onSuccess();
+        onClose();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update question");
+      }
+    } catch (error: any) {
+      SwalToast.fire({
+        icon: "error",
+        title: error.message || "Something went wrong"
+      });
+    }
   };
 
   if (!isOpen) return null;
@@ -178,10 +204,10 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto pr-2">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full border border-gray-200 p-4 rounded-xl dark:border-gray-800 shrink-0">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full border border-gray-200 p-3 rounded-xl dark:border-gray-800 shrink-0">
             <div className="md:col-span-3">
-              <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+              <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                 Question Title
               </label>
               <input
@@ -190,13 +216,28 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
                 value={formData.title}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-1.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
                 placeholder="e.g. Reverse a String"
               />
             </div>
 
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
+                Expected Output
+              </label>
+              <textarea
+                name="expectedOutput"
+                value={formData.expectedOutput}
+                onChange={handleChange}
+                required
+                rows={2}
+                className="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-1.5 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500 font-mono"
+                placeholder="e.g. Hello World"
+              />
+            </div>
+
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+              <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                 Difficulty
               </label>
               <div className="relative">
@@ -204,7 +245,7 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
                   name="difficulty"
                   value={formData.difficulty}
                   onChange={handleChange}
-                  className="h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  className="h-10 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                 >
                   <option value="Easy">Easy</option>
                   <option value="Medium">Medium</option>
@@ -219,7 +260,7 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+              <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                 XP Reward
               </label>
               <input
@@ -228,12 +269,12 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
                 value={formData.xpReward}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 outline-none transition focus:border-blue-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-white/90">
+              <label className="mb-1 block text-sm font-medium text-gray-800 dark:text-white/90">
                 Round
               </label>
               <div className="relative">
@@ -241,7 +282,7 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
                   name="roundId"
                   value={formData.roundId}
                   onChange={handleChange}
-                  className="h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  className="h-10 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2 pr-11 text-sm shadow-theme-xs focus:border-blue-500 outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                 >
                   {rounds.length === 0 ? (
                     <option value="" disabled className="text-gray-700 dark:bg-gray-900 dark:text-gray-400">No rounds available</option>
@@ -396,7 +437,7 @@ export default function EditQuestionModal({ isOpen, onClose, questionId }: EditQ
             )}
           </div>
 
-          <div className="flex justify-end pt-4 shrink-0">
+          <div className="flex justify-end pt-0 pb-1 shrink-0">
             <button
               type="button"
               onClick={onClose}

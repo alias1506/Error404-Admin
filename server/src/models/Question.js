@@ -40,6 +40,10 @@ const questionSchema = new mongoose.Schema(
       type: [languageCodeSchema],
       validate: [v => v.length > 0, 'Please provide at least one language code'],
     },
+    expectedOutput: {
+      type: String,
+      required: [true, 'Please provide expected output'],
+    },
     slug: {
       type: String,
       unique: true,

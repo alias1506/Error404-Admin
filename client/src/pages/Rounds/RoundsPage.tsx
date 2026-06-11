@@ -14,6 +14,7 @@ type Round = {
   duration: number;
   status: "Upcoming" | "Active" | "Completed";
   remainingSeconds?: number;
+  updatedAt?: string;
 };
 
 export default function RoundsPage() {
@@ -28,20 +29,27 @@ export default function RoundsPage() {
     const interval = setInterval(() => {
       setRounds((prevRounds) => {
         let hasChanges = false;
+        const now = Date.now();
         const updated = prevRounds.map(r => {
-          if (r.status === "Active" && r.remainingSeconds !== undefined && r.remainingSeconds > 0) {
-            hasChanges = true;
-            const newRemaining = r.remainingSeconds - 1;
-            if (newRemaining <= 0) {
-              fetch(`${API_URL}/api/rounds/${r.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: "Completed" }),
-              });
-              SwalToast.fire({ icon: 'success', title: `Round '${r.name}' completed!` });
-              return { ...r, status: "Completed" as const, remainingSeconds: 0 };
+          if (r.status === "Active" && r.updatedAt) {
+            const startTime = new Date(r.updatedAt).getTime();
+            const durationMs = r.duration * 60 * 1000;
+            const remSecs = Math.max(0, Math.floor((startTime + durationMs - now) / 1000));
+            
+            if (remSecs !== r.remainingSeconds) {
+              hasChanges = true;
+              if (remSecs <= 0 && r.remainingSeconds && r.remainingSeconds > 0) {
+                // Timer just hit 0
+                fetch(`${API_URL}/api/rounds/${r.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: "Completed" }),
+                });
+                SwalToast.fire({ icon: 'success', title: `Round '${r.name}' completed!` });
+                return { ...r, status: "Completed" as const, remainingSeconds: 0 };
+              }
+              return { ...r, remainingSeconds: remSecs };
             }
-            return { ...r, remainingSeconds: newRemaining };
           }
           return r;
         });
@@ -58,18 +66,33 @@ export default function RoundsPage() {
         const data = await response.json();
         const formattedRounds = data.map((r: any) => {
           let remSecs = undefined;
+          let currentStatus = r.status;
+          
           if (r.status === "Active" && r.updatedAt) {
             const startTime = new Date(r.updatedAt).getTime();
             const durationMs = r.duration * 60 * 1000;
             const now = Date.now();
-            remSecs = Math.max(0, Math.floor((startTime + durationMs - now) / 1000));
+            remSecs = Math.floor((startTime + durationMs - now) / 1000);
+            
+            if (remSecs <= 0) {
+              remSecs = 0;
+              currentStatus = "Completed";
+              // Fire and forget PUT to sync server
+              fetch(`${API_URL}/api/rounds/${r._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: "Completed" }),
+              }).catch(err => console.error("Auto-complete sync error:", err));
+            }
           }
+          
           return {
             id: r._id,
             name: r.name,
             duration: r.duration,
-            status: r.status,
+            status: currentStatus,
             remainingSeconds: remSecs,
+            updatedAt: r.updatedAt,
           };
         });
         // Sort ascending by MongoDB ObjectId (chronological order)
@@ -92,6 +115,13 @@ export default function RoundsPage() {
   };
   
   const totalPages = Math.ceil(rounds.length / itemsPerPage);
+  
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   const currentRounds = rounds.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   
   const [formData, setFormData] = useState<{
@@ -182,13 +212,6 @@ export default function RoundsPage() {
 
   const toggleStatus = async (id: string, currentStatus: Round["status"]) => {
     const newStatus = currentStatus === "Active" ? "Completed" : "Active";
-    
-    // Optimistic UI update to instantly show checkmark and start timer
-    setRounds(rounds.map(r => r.id === id ? { 
-      ...r, 
-      status: newStatus,
-      remainingSeconds: newStatus === "Active" ? r.duration * 60 : undefined 
-    } : r));
 
     try {
       const response = await fetch(`${API_URL}/api/rounds/${id}`, {
@@ -197,14 +220,15 @@ export default function RoundsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       
-      if (!response.ok) {
-        await fetchRounds(); // Revert on failure
-      } else {
-        await fetchRounds(); // Sync actual server time
+      if (response.ok) {
+        await fetchRounds(); // Sync actual server time and correct updatedAt
         SwalToast.fire({ icon: 'success', title: `Round marked as ${newStatus}` });
+      } else {
+        SwalToast.fire({ icon: 'error', title: 'Failed to update round status' });
       }
     } catch (error) {
       console.error("Error updating status:", error);
+      SwalToast.fire({ icon: 'error', title: 'Network error updating status' });
     }
   };
 
@@ -410,14 +434,18 @@ export default function RoundsPage() {
                                 className={`transition-colors ${
                                   round.status === "Active" 
                                     ? "text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300" 
-                                    : "text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
+                                    : round.status === "Completed"
+                                    ? "text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300"
+                                    : "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                                 }`}
-                                title={round.status === "Active" ? "Complete Round" : "Activate Round"}
+                                title={round.status === "Active" ? "Complete Round" : round.status === "Completed" ? "Reactivate Round" : "Start Round"}
                               >
                                 {round.status === "Active" ? (
                                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                ) : round.status === "Completed" ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
                                 ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 )}
                               </button>
                               
