@@ -175,6 +175,7 @@ export default function Submissions() {
               <Table className="table-fixed">
                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                   <TableRow>
+                    <TableCell isHeader className="w-[5%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">#</TableCell>
                     <TableCell isHeader className="w-[20%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">User</TableCell>
                     <TableCell isHeader className="w-[25%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Question</TableCell>
                     <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Lang</TableCell>
@@ -187,11 +188,11 @@ export default function Submissions() {
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-gray-500 dark:text-gray-400">Loading submissions...</TableCell>
+                      <TableCell colSpan={8} className="py-8 text-center text-gray-500 dark:text-gray-400">Loading submissions...</TableCell>
                     </TableRow>
                   ) : filteredSubmissions.length === 0 ? (
                     <TableRow>
-                      <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
+                      <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
                         <div className="flex flex-col items-center justify-center">
                           <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -202,8 +203,11 @@ export default function Submissions() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    currentSubmissions.map((sub) => (
+                    currentSubmissions.map((sub, index) => (
                       <TableRow key={sub._id}>
+                        <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </TableCell>
                         <TableCell className="px-5 py-4 sm:px-6 text-start">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 overflow-hidden rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 font-semibold text-lg">

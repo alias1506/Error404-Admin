@@ -26,37 +26,7 @@ export default function RoundsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRounds((prevRounds) => {
-        let hasChanges = false;
-        const now = Date.now();
-        const updated = prevRounds.map(r => {
-          if (r.status === "Active" && r.updatedAt) {
-            const startTime = new Date(r.updatedAt).getTime();
-            const durationMs = r.duration * 60 * 1000;
-            const remSecs = Math.max(0, Math.floor((startTime + durationMs - now) / 1000));
-            
-            if (remSecs !== r.remainingSeconds) {
-              hasChanges = true;
-              if (remSecs <= 0 && r.remainingSeconds && r.remainingSeconds > 0) {
-                // Timer just hit 0
-                fetch(`${API_URL}/api/rounds/${r.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ status: "Completed" }),
-                });
-                SwalToast.fire({ icon: 'success', title: `Round '${r.name}' completed!` });
-                return { ...r, status: "Completed" as const, remainingSeconds: 0 };
-              }
-              return { ...r, remainingSeconds: remSecs };
-            }
-          }
-          return r;
-        });
-        return hasChanges ? updated : prevRounds;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
+    // Timer auto-completion logic removed.
   }, []);
   
   const fetchRounds = async () => {
@@ -65,33 +35,13 @@ export default function RoundsPage() {
       if (response.ok) {
         const data = await response.json();
         const formattedRounds = data.map((r: any) => {
-          let remSecs = undefined;
           let currentStatus = r.status;
-          
-          if (r.status === "Active" && r.updatedAt) {
-            const startTime = new Date(r.updatedAt).getTime();
-            const durationMs = r.duration * 60 * 1000;
-            const now = Date.now();
-            remSecs = Math.floor((startTime + durationMs - now) / 1000);
-            
-            if (remSecs <= 0) {
-              remSecs = 0;
-              currentStatus = "Completed";
-              // Fire and forget PUT to sync server
-              fetch(`${API_URL}/api/rounds/${r._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: "Completed" }),
-              }).catch(err => console.error("Auto-complete sync error:", err));
-            }
-          }
           
           return {
             id: r._id,
             name: r.name,
             duration: r.duration,
             status: currentStatus,
-            remainingSeconds: remSecs,
             updatedAt: r.updatedAt,
           };
         });
@@ -389,6 +339,7 @@ export default function RoundsPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">
+                      <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-12">#</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm">Round Name</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Duration</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Status</th>
@@ -397,20 +348,17 @@ export default function RoundsPage() {
                   </thead>
                   <tbody>
                     {currentRounds.length > 0 ? (
-                      currentRounds.map((round) => (
+                      currentRounds.map((round, index) => (
                         <tr key={round.id} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                          <td className="py-4 px-2 text-sm text-gray-500 dark:text-gray-400">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </td>
                           <td className="py-4 px-2">
                             <div className="font-medium text-gray-800 dark:text-gray-200">{round.name}</div>
                           </td>
                           <td className="py-4 px-2">
                             <div className="text-sm text-gray-700 dark:text-gray-300 font-mono">
-                              {round.status === "Active" && round.remainingSeconds !== undefined ? (
-                                <span className="text-emerald-600 dark:text-emerald-400 font-bold tracking-widest">
-                                  {Math.floor(round.remainingSeconds / 60).toString().padStart(2, '0')}:{(round.remainingSeconds % 60).toString().padStart(2, '0')}
-                                </span>
-                              ) : (
                                 <span>{round.duration} mins</span>
-                              )}
                             </div>
                           </td>
                           <td className="py-4 px-2">
@@ -472,7 +420,7 @@ export default function RoundsPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-sm text-gray-500">
+                        <td colSpan={5} className="py-8 text-center text-sm text-gray-500">
                           No rounds found. Create your first round to get started.
                         </td>
                       </tr>

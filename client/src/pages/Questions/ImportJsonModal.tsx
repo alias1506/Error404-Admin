@@ -127,6 +127,14 @@ export default function ImportJsonModal({ isOpen, onClose, onSuccess }: ImportJs
       let jsonData;
       try {
         jsonData = JSON.parse(fileText);
+        
+        // Handle case where JSON is wrapped in an object
+        if (jsonData.questions && Array.isArray(jsonData.questions)) {
+          jsonData = jsonData.questions;
+        } else if (jsonData.data && Array.isArray(jsonData.data)) {
+          jsonData = jsonData.data;
+        }
+
         // Inject roundId dynamically
         if (Array.isArray(jsonData)) {
           jsonData = jsonData.map((q: any) => ({ ...q, roundId: selectedRound }));
@@ -134,9 +142,17 @@ export default function ImportJsonModal({ isOpen, onClose, onSuccess }: ImportJs
           jsonData.roundId = selectedRound;
           jsonData = [jsonData]; // Ensure it's an array
         }
-      } catch (err) {
+        
+        // Validate required fields
+        for (let i = 0; i < jsonData.length; i++) {
+          const q = jsonData[i];
+          if (!q.title) throw new Error(`Question at index ${i} is missing 'title'`);
+          if (!q.expectedOutput) throw new Error(`Question at index ${i} is missing 'expectedOutput'`);
+          if (!q.codes || !Array.isArray(q.codes) || q.codes.length === 0) throw new Error(`Question at index ${i} is missing 'codes' array`);
+        }
+      } catch (err: any) {
         clearInterval(progressInterval);
-        SwalToast.fire({ icon: "error", title: "Invalid JSON", text: "The selected file is not valid JSON." });
+        SwalToast.fire({ icon: "error", title: "Invalid JSON", text: err.message || "The selected file is not valid JSON." });
         setIsUploading(false);
         return;
       }

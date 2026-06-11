@@ -222,6 +222,9 @@ export default function Users() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
+                <TableCell isHeader className="w-[5%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  #
+                </TableCell>
                 <TableCell isHeader className="w-[30%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                   User Info
                 </TableCell>
@@ -243,8 +246,11 @@ export default function Users() {
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {currentUsers.map((user) => (
+              {currentUsers.map((user, index) => (
                 <TableRow key={user._id}>
+                  <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
+                    {(currentPage - 1) * itemsPerPage + index + 1}
+                  </TableCell>
                   <TableCell className="px-5 py-4 sm:px-6 text-start">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 overflow-hidden rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 font-semibold text-lg">
@@ -292,7 +298,7 @@ export default function Users() {
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={6}>
+                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
                     <div className="flex flex-col items-center justify-center">
                       <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />

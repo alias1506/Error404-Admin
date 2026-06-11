@@ -1,4 +1,5 @@
 const Question = require('../models/Question');
+const beautify = require('js-beautify').js;
 
 // @desc    Create a new question
 // @route   POST /api/questions
@@ -11,12 +12,21 @@ exports.createQuestion = async (req, res) => {
       return res.status(400).json({ message: 'Please provide all required fields including expected output' });
     }
 
+    // Auto-format code
+    const formattedCodes = codes.map(c => {
+      if (c.language !== 'python') {
+        if (c.buggyCode) c.buggyCode = beautify(c.buggyCode, { indent_size: 4 });
+        if (c.correctSolution) c.correctSolution = beautify(c.correctSolution, { indent_size: 4 });
+      }
+      return c;
+    });
+
     const question = await Question.create({
       title,
       difficulty,
       xpReward,
       roundId,
-      codes,
+      codes: formattedCodes,
       expectedOutput
     });
 
@@ -72,7 +82,16 @@ exports.updateQuestion = async (req, res) => {
     if (difficulty) question.difficulty = difficulty;
     if (xpReward) question.xpReward = xpReward;
     if (roundId) question.roundId = roundId;
-    if (codes) question.codes = codes;
+    if (codes) {
+      // Auto-format code
+      question.codes = codes.map(c => {
+        if (c.language !== 'python') {
+          if (c.buggyCode) c.buggyCode = beautify(c.buggyCode, { indent_size: 4 });
+          if (c.correctSolution) c.correctSolution = beautify(c.correctSolution, { indent_size: 4 });
+        }
+        return c;
+      });
+    }
     if (expectedOutput) question.expectedOutput = expectedOutput;
 
     await question.save();
@@ -119,6 +138,17 @@ exports.importQuestions = async (req, res) => {
       if (!q.slug && q.title) {
         q.slug = q.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4) + '-' + index;
       }
+      
+      // Auto-format code during import
+      if (q.codes && Array.isArray(q.codes)) {
+        q.codes = q.codes.map(c => {
+          if (c.language !== 'python') {
+            if (c.buggyCode) c.buggyCode = beautify(c.buggyCode, { indent_size: 4 });
+            if (c.correctSolution) c.correctSolution = beautify(c.correctSolution, { indent_size: 4 });
+          }
+          return c;
+        });
+      }
       return q;
     });
 
@@ -126,6 +156,9 @@ exports.importQuestions = async (req, res) => {
     res.status(201).json({ message: `Successfully imported ${inserted.length} questions`, insertedCount: inserted.length });
   } catch (error) {
     console.error('Error importing questions:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation Error', error: error.message });
+    }
     res.status(500).json({ message: 'Server error importing questions', error: error.message });
   }
 };

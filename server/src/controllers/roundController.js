@@ -49,6 +49,14 @@ exports.updateRound = async (req, res, next) => {
       return res.status(404).json({ message: 'Round not found' });
     }
 
+    if (status === 'Active' && round.status !== 'Active') {
+      const User = require('../models/User');
+      await User.updateMany(
+        {},
+        { $pull: { startedRounds: { roundId: round._id } } }
+      );
+    }
+
     round.name = name || round.name;
     round.duration = duration || round.duration;
     round.status = status || round.status;
