@@ -96,6 +96,10 @@ export default function Submissions() {
   };
 
   const handleViewUserSubmissions = async (user: any) => {
+    if (!user) {
+      SwalToast.fire({ icon: 'error', title: 'User data is missing or deleted' });
+      return;
+    }
     setSelectedUserObj(user);
     try {
       const res = await fetch(`${API_URL}/api/submissions/user/${user._id}`);
