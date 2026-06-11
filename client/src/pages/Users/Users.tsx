@@ -29,6 +29,7 @@ interface User {
   role: string;
   lastLogin: string;
   createdAt: string;
+  warnings: number;
 }
 
 const socket = io(API_URL); // Connect to admin backend
@@ -102,6 +103,7 @@ export default function Users() {
       xp: user.xp,
       level: user.level,
       streak: user.streak,
+      warnings: user.warnings,
     });
     setIsEditModalOpen(true);
   };
@@ -225,8 +227,11 @@ export default function Users() {
                 <TableCell isHeader className="w-[5%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                   #
                 </TableCell>
-                <TableCell isHeader className="w-[30%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                <TableCell isHeader className="w-[25%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                   User Info
+                </TableCell>
+                <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  Status
                 </TableCell>
                 <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                   Level
@@ -267,6 +272,19 @@ export default function Users() {
                     </div>
                   </TableCell>
 
+                  <TableCell className="px-5 py-4 text-start text-sm">
+                    <div className="flex flex-col gap-1.5 items-start">
+                      {user.warnings >= 3 ? (
+                        <Badge color="error">Disqualified</Badge>
+                      ) : (
+                        <Badge color="success">Active</Badge>
+                      )}
+                      {user.warnings > 0 && user.warnings < 3 && (
+                        <Badge color="warning">{user.warnings}/3 Warnings</Badge>
+                      )}
+                    </div>
+                  </TableCell>
+
                   <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
                     <span className="font-semibold text-gray-800 dark:text-white/90">{user.level || 1}</span>
                   </TableCell>
@@ -298,7 +316,7 @@ export default function Users() {
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
+                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
                     <div className="flex flex-col items-center justify-center">
                       <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -350,6 +368,20 @@ export default function Users() {
                 <div className="bg-orange-50/50 dark:bg-orange-500/5 rounded-3xl p-5 flex flex-col items-center justify-center transition-transform hover:-translate-y-1">
                   <span className="text-orange-500/60 dark:text-orange-500/60 text-[10px] font-bold uppercase tracking-widest mb-2">Streak</span>
                   <span className="text-2xl font-bold text-orange-500">🔥 {selectedUser.streak || 0}</span>
+                </div>
+              </div>
+
+              <div className="bg-gray-50/50 dark:bg-white/5 rounded-2xl p-4 mb-6 flex justify-between items-center">
+                <span className="text-gray-400 dark:text-gray-500 font-medium text-sm">Account Status</span>
+                <div className="flex gap-2 items-center">
+                  {selectedUser.warnings >= 3 ? (
+                    <Badge color="error">Disqualified</Badge>
+                  ) : (
+                    <Badge color="success">Active</Badge>
+                  )}
+                  {selectedUser.warnings > 0 && selectedUser.warnings < 3 && (
+                    <Badge color="warning">{selectedUser.warnings}/3 Warnings</Badge>
+                  )}
                 </div>
               </div>
 
@@ -411,6 +443,12 @@ export default function Users() {
               <label className="block text-[11px] font-bold text-orange-500/70 uppercase tracking-widest mb-2 text-center">Streak</label>
               <input type="text" inputMode="numeric" required value={editForm.streak || ''} onChange={(e) => handleNumberInput('streak', e.target.value)} className="w-full px-4 py-3.5 bg-orange-50/50 border-0 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500/50 dark:bg-orange-500/10 dark:text-orange-500 transition-all text-center font-bold text-lg" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-red-500/70 uppercase tracking-widest mb-2 pl-1">Warnings / Infractions</label>
+            <input type="text" inputMode="numeric" required value={editForm.warnings !== undefined ? editForm.warnings : ''} onChange={(e) => handleNumberInput('warnings', e.target.value)} className="w-full px-5 py-3.5 bg-red-50/50 border-0 rounded-2xl outline-none focus:ring-2 focus:ring-red-500/50 dark:bg-red-500/10 dark:text-red-500 transition-all font-bold" />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 ml-1">Setting this to 3 or higher will instantly disqualify the user.</p>
           </div>
 
           <div className="flex justify-end gap-3 mt-8 pt-4">

@@ -24,7 +24,7 @@ const getDashboardStats = async () => {
     //   Attempt = 20% weight  (20 pts per unique attempt, rewards participation)
     const leaderboardRaw = await User.find(
       {},
-      'username email xp level streak solvedQuestions attemptedQuestions achievements createdAt'
+      'username email xp level streak solvedQuestions attemptedQuestions achievements createdAt warnings'
     );
 
     const leaderboard = leaderboardRaw.map(user => {
@@ -42,10 +42,16 @@ const getDashboardStats = async () => {
         attemptedQuestions: user.attemptedQuestions,
         achievements: user.achievements,
         createdAt: user.createdAt,
+        warnings: user.warnings || 0,
         rankScore: Math.round(rankScore * 100) / 100
       };
     })
-    .sort((a, b) => b.rankScore - a.rankScore)
+    .sort((a, b) => {
+      const aWarnings = a.warnings >= 3 ? 3 : a.warnings;
+      const bWarnings = b.warnings >= 3 ? 3 : b.warnings;
+      if (aWarnings !== bWarnings) return aWarnings - bWarnings;
+      return b.rankScore - a.rankScore;
+    })
     .slice(0, 10);
 
     return {
