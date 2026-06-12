@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
-  "installCommand": "npm install --prefix client",
+  "installCommand": "rm -rf server/node_modules && npm install --prefix client",
   "functions": {
     "api/index.js": {
       "includeFiles": "server/src/**"
