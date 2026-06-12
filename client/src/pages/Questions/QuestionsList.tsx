@@ -9,6 +9,8 @@ import Pagination from "../../components/common/Pagination";
 import ViewQuestionModal from "./ViewQuestionModal";
 import EditQuestionModal from "./EditQuestionModal";
 import ImportJsonModal from "./ImportJsonModal";
+import Checkbox from "../../components/form/input/Checkbox";
+import Loader from "../../components/common/Loader";
 
 interface Question {
   _id: string;
@@ -28,10 +30,27 @@ export default function QuestionsList() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedRound, setSelectedRound] = useState<string>("All Rounds");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [availableRounds, setAvailableRounds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadRounds = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/rounds`);
+      if (response.ok) {
+        const data = await response.json();
+        const roundNames = data.map((r: any) => r.name);
+        setAvailableRounds(roundNames);
+      }
+    } catch (error) {
+      console.error("Failed to fetch rounds:", error);
+    }
+  };
 
   const loadQuestions = async () => {
     try {
@@ -50,16 +69,21 @@ export default function QuestionsList() {
       }
     } catch (error) {
       console.error("Failed to fetch questions:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadQuestions();
+    loadRounds();
   }, []);
 
-  const filteredQuestions = questions.filter((q) => 
-    q.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredQuestions = questions.filter((q) => {
+    const matchesSearch = q.title.toLowerCase().includes(search.toLowerCase());
+    const matchesRound = selectedRound === "All Rounds" || q.round === selectedRound;
+    return matchesSearch && matchesRound;
+  });
 
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
   
@@ -70,6 +94,18 @@ export default function QuestionsList() {
   }, [totalPages, currentPage]);
 
   const currentQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentQuestions.map(q => q._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
 
   const handleDelete = async (q: Question) => {
     const result = await Swal.fire({
@@ -92,6 +128,36 @@ export default function QuestionsList() {
       } catch (error) {
         console.error("Error deleting question:", error);
         SwalToast.fire({ icon: 'error', title: 'Error deleting question' });
+      }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you really want to delete ${selectedIds.length} questions? This cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete them!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`${API_URL}/api/questions/bulk-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds }),
+        });
+        if (response.ok) {
+          setQuestions((prev) => prev.filter(q => !selectedIds.includes(q._id)));
+          setSelectedIds([]);
+          setTimeout(() => SwalToast.fire({ icon: 'success', title: 'Questions deleted successfully' }), 300);
+        } else {
+          SwalToast.fire({ icon: 'error', title: 'Failed to delete questions' });
+        }
+      } catch (error) {
+        SwalToast.fire({ icon: 'error', title: 'Server error' });
       }
     }
   };
@@ -119,6 +185,18 @@ export default function QuestionsList() {
         </div>
         
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="w-[180px]">
+            <Select 
+              options={[
+                { value: "All Rounds", label: "All Rounds" },
+                ...availableRounds.map(r => ({ value: r, label: r }))
+              ]}
+              defaultValue={selectedRound}
+              onChange={(value) => { setSelectedRound(value); setCurrentPage(1); }}
+              className="!h-10 !py-1.5 !bg-transparent dark:!bg-white/5 !border-gray-200 dark:!border-gray-800 !shadow-none"
+            />
+          </div>
+
           <div className="w-[140px]">
             <Select 
               options={[
@@ -131,6 +209,18 @@ export default function QuestionsList() {
               className="!h-10 !py-1.5 !bg-transparent dark:!bg-white/5 !border-gray-200 dark:!border-gray-800 !shadow-none"
             />
           </div>
+
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-error-500 rounded-lg hover:bg-error-600 transition-colors w-full sm:w-auto justify-center"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete ({selectedIds.length})
+            </button>
+          )}
 
           <button
             onClick={() => setIsImportModalOpen(true)}
@@ -153,12 +243,25 @@ export default function QuestionsList() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="max-w-full overflow-x-auto">
+      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] min-h-[400px]">
+        {loading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl">
+            <Loader text="Loading questions..." />
+          </div>
+        )}
+        <div className={`max-w-full overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
           <Table className="table-fixed">
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
-                <TableCell isHeader className="w-[5%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">#</TableCell>
+                <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  <div className="flex items-center gap-3">
+                    <Checkbox 
+                      checked={currentQuestions.length > 0 && selectedIds.length === currentQuestions.length}
+                      onChange={handleSelectAll}
+                    />
+                    <span>#</span>
+                  </div>
+                </TableCell>
                 <TableCell isHeader className="w-[35%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Title</TableCell>
                 <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Difficulty</TableCell>
                 <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">XP</TableCell>
@@ -168,10 +271,29 @@ export default function QuestionsList() {
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {currentQuestions.map((q, index) => (
-                <TableRow key={q._id}>
-                  <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
+              {!loading && filteredQuestions.length === 0 ? (
+                <TableRow>
+                  <TableCell className="px-5 text-center text-gray-500 dark:text-gray-400 h-[350px]" colSpan={7}>
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No questions found</p>
+                      <p className="text-sm">Try adjusting your search or add a new question.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                currentQuestions.map((q, index) => (
+                  <TableRow key={q._id}>
+                  <TableCell className="px-5 py-4 text-start">
+                    <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                      <Checkbox 
+                        checked={selectedIds.includes(q._id)}
+                        onChange={() => handleSelectOne(q._id)}
+                      />
+                      <span>{(currentPage - 1) * itemsPerPage + index + 1}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="px-5 py-4 sm:px-6 text-start">
                     <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{q.title}</span>
@@ -214,22 +336,10 @@ export default function QuestionsList() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
-              {filteredQuestions.length === 0 && (
-                <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
-                    <div className="flex flex-col items-center justify-center">
-                      <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No questions found</p>
-                      <p className="text-sm">Try adjusting your search or refresh the data.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
         </div>
       </div>
 

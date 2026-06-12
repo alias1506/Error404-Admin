@@ -95,3 +95,27 @@ exports.deleteRound = async (req, res, next) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Bulk delete rounds
+// @route   POST /api/rounds/bulk-delete
+// @access  Public (or Admin)
+exports.bulkDeleteRounds = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Invalid or missing ids array' });
+    }
+
+    const Question = require('../models/Question');
+    
+    // Delete all questions associated with these rounds
+    await Question.deleteMany({ roundId: { $in: ids } });
+    
+    // Delete the rounds
+    const result = await Round.deleteMany({ _id: { $in: ids } });
+
+    res.status(200).json({ message: `${result.deletedCount} rounds and their associated questions removed` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

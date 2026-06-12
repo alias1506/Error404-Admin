@@ -3,6 +3,8 @@ import PageMeta from "../../components/common/PageMeta";
 import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import Pagination from "../../components/common/Pagination";
 import Select from "../../components/form/Select";
+import Checkbox from "../../components/form/input/Checkbox";
+import Loader from "../../components/common/Loader";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -24,6 +26,8 @@ export default function RoundsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Timer auto-completion logic removed.
@@ -51,6 +55,8 @@ export default function RoundsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch rounds:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,6 +79,18 @@ export default function RoundsPage() {
   }, [totalPages, currentPage]);
 
   const currentRounds = rounds.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentRounds.map(r => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
   
   const [formData, setFormData] = useState<{
     name: string;
@@ -206,15 +224,43 @@ export default function RoundsPage() {
     });
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you really want to delete ${selectedIds.length} rounds? This cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete them!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`${API_URL}/api/rounds/bulk-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds }),
+        });
+        if (response.ok) {
+          await fetchRounds();
+          setSelectedIds([]);
+          SwalToast.fire({ icon: 'success', title: 'Rounds deleted successfully' });
+        } else {
+          SwalToast.fire({ icon: 'error', title: 'Failed to delete rounds' });
+        }
+      } catch (error) {
+        SwalToast.fire({ icon: 'error', title: 'Server error' });
+      }
+    }
+  };
+
   return (
     <>
       <PageMeta title="Rounds Management | Error404 Admin" description="Manage competition rounds" />
 
       <div className="flex flex-col gap-6 w-full">
-        {/* Main Grid: 40% (Form) / 60% (Table) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 w-full items-start">
           
-          {/* Left Column (40%): Create Round Form */}
           <div className="lg:col-span-2">
             <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 shadow-sm sticky top-24">
               <div className="mb-6 border-b border-gray-200 pb-4 dark:border-gray-800 flex justify-between items-center">
@@ -297,7 +343,6 @@ export default function RoundsPage() {
             </div>
           </div>
 
-          {/* Right Column (60%): Rounds Table */}
           <div className="lg:col-span-3 h-[calc(100vh-140px)]">
             <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 shadow-sm h-full flex flex-col">
               <div className="mb-6 border-b border-gray-200 pb-4 dark:border-gray-800 flex justify-between items-center">
@@ -322,6 +367,19 @@ export default function RoundsPage() {
                       className="!h-9 !py-1 !text-xs !bg-transparent dark:!bg-white/5 !border-gray-200 dark:!border-gray-800 !shadow-none"
                     />
                   </div>
+                  
+                  {selectedIds.length > 0 && (
+                    <button 
+                      onClick={handleBulkDelete}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-error-500 rounded-lg hover:bg-error-600 transition-colors w-full sm:w-auto justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete ({selectedIds.length})
+                    </button>
+                  )}
+
                   <button 
                     onClick={handleRefresh}
                     disabled={isRefreshing}
@@ -335,11 +393,24 @@ export default function RoundsPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left border-collapse">
+              <div className="relative overflow-x-auto flex-1 min-h-[400px]">
+                {loading && (
+                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl">
+                    <Loader text="Loading rounds..." />
+                  </div>
+                )}
+                <table className={`w-full text-left border-collapse ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">
-                      <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-12">#</th>
+                      <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-[10%]">
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            checked={currentRounds.length > 0 && selectedIds.length === currentRounds.length}
+                            onChange={handleSelectAll}
+                          />
+                          <span>#</span>
+                        </div>
+                      </th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm">Round Name</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Duration</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Status</th>
@@ -347,11 +418,29 @@ export default function RoundsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentRounds.length > 0 ? (
+                    {!loading && currentRounds.length === 0 ? (
+                      <tr>
+                        <td className="px-5 text-center text-gray-500 dark:text-gray-400 h-[350px]" colSpan={5}>
+                          <div className="flex flex-col items-center justify-center h-full">
+                            <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No rounds found</p>
+                            <p className="text-sm">Create a new round to get started.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
                       currentRounds.map((round, index) => (
                         <tr key={round.id} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
-                          <td className="py-4 px-2 text-sm text-gray-500 dark:text-gray-400">
-                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          <td className="py-4 px-2 text-start">
+                            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                              <Checkbox 
+                                checked={selectedIds.includes(round.id)}
+                                onChange={() => handleSelectOne(round.id)}
+                              />
+                              <span>{(currentPage - 1) * itemsPerPage + index + 1}</span>
+                            </div>
                           </td>
                           <td className="py-4 px-2">
                             <div className="font-medium text-gray-800 dark:text-gray-200">{round.name}</div>
@@ -418,12 +507,6 @@ export default function RoundsPage() {
                           </td>
                         </tr>
                       ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-sm text-gray-500">
-                          No rounds found. Create your first round to get started.
-                        </td>
-                      </tr>
                     )}
                   </tbody>
                 </table>

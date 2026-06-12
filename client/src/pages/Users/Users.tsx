@@ -17,7 +17,8 @@ import Select from "../../components/form/Select";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Pagination from "../../components/common/Pagination";
-
+import Checkbox from "../../components/form/input/Checkbox";
+import Loader from "../../components/common/Loader";
 interface User {
   _id: string;
   username: string;
@@ -41,8 +42,11 @@ export default function Users() {
   const [editForm, setEditForm] = useState<Partial<User>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchUsers = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/users`);
       if (response.ok) {
@@ -51,6 +55,8 @@ export default function Users() {
       }
     } catch (error) {
       console.error("Failed to load users:", error);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -159,6 +165,48 @@ export default function Users() {
 
   const currentUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentUsers.map(u => u._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you really want to delete ${selectedIds.length} users? This cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete them!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`${API_URL}/api/users/bulk-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds }),
+        });
+        if (response.ok) {
+          setUsers((prev) => prev.filter(u => !selectedIds.includes(u._id)));
+          setSelectedIds([]);
+          setTimeout(() => SwalToast.fire({ icon: 'success', title: 'Users deleted successfully' }), 300);
+        } else {
+          SwalToast.fire({ icon: 'error', title: 'Failed to delete users' });
+        }
+      } catch (error) {
+        SwalToast.fire({ icon: 'error', title: 'Server error' });
+      }
+    }
+  };
+
   return (
     <>
       <PageMeta
@@ -196,6 +244,18 @@ export default function Users() {
             />
           </div>
 
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-error-500 rounded-lg hover:bg-error-600 transition-colors w-full sm:w-auto justify-center"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete ({selectedIds.length})
+            </button>
+          )}
+
           <button 
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -209,116 +269,135 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="max-w-full overflow-x-auto">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-              <TableRow>
-                <TableCell isHeader className="w-[5%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  #
-                </TableCell>
-                <TableCell isHeader className="w-[25%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  User Info
-                </TableCell>
-                <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Status
-                </TableCell>
-                <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Level
-                </TableCell>
-                <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  XP
-                </TableCell>
-                <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Streak
-                </TableCell>
-                <TableCell isHeader className="w-[20%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Last Login
-                </TableCell>
-                <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400">
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {currentUsers.map((user, index) => (
-                <TableRow key={user._id}>
-                  <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 sm:px-6 text-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 overflow-hidden rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 font-semibold text-lg">
-                        {user.username?.charAt(0).toUpperCase() || "U"}
-                      </div>
-                      <div>
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {user.username}
-                        </span>
-                        <span className="block text-gray-500 text-theme-xs dark:text-gray-400 mt-0.5">
-                          {user.email}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  <TableCell className="px-5 py-4 text-start text-sm">
-                    <div className="flex flex-col gap-1.5 items-start">
-                      {user.warnings >= 3 ? (
-                        <Badge color="error">Disqualified</Badge>
-                      ) : (
-                        <Badge color="success">Active</Badge>
-                      )}
-                      {user.warnings > 0 && user.warnings < 3 && (
-                        <Badge color="warning">{user.warnings}/3 Warnings</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-
-                  <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
-                    <span className="font-semibold text-gray-800 dark:text-white/90">{user.level || 1}</span>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
-                    {user.xp || 0} XP
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-start text-sm">
-                    <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 font-medium border border-orange-200 dark:border-orange-500/20">
-                      🔥 {user.streak || 0}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-start text-gray-500 text-theme-sm dark:text-gray-400">
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-end">
-                    <div className="flex items-center justify-end gap-3">
-                      <button onClick={() => handleView(user)} className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="View User">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                      </button>
-                      <button onClick={() => handleEdit(user)} className="text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors" title="Edit User">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                      </button>
-                      <button onClick={() => handleDelete(user)} className="text-gray-500 hover:text-error-500 dark:text-gray-400 dark:hover:text-error-400 transition-colors" title="Delete User">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredUsers.length === 0 && (
+      <div className="flex flex-col gap-6 w-full">
+        {/* Users Table */}
+        <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] min-h-[400px]">
+          {loading && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl">
+              <Loader text="Loading users..." />
+            </div>
+          )}
+          <div className={`max-w-full overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
+            <Table className="table-fixed">
+              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                 <TableRow>
-                  <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
-                    <div className="flex flex-col items-center justify-center">
-                      <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No users found</p>
-                      <p className="text-sm">Try adjusting your search or refresh the data.</p>
+                  <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <div className="flex items-center gap-3">
+                      <Checkbox 
+                        checked={currentUsers.length > 0 && selectedIds.length === currentUsers.length}
+                        onChange={handleSelectAll}
+                      />
+                      <span>#</span>
                     </div>
                   </TableCell>
+                  <TableCell isHeader className="w-[25%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    User Info
+                  </TableCell>
+                  <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Status
+                  </TableCell>
+                  <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Level
+                  </TableCell>
+                  <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    XP
+                  </TableCell>
+                  <TableCell isHeader className="w-[15%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Streak
+                  </TableCell>
+                  <TableCell isHeader className="w-[20%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Last Login
+                  </TableCell>
+                  <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400">
+                    Actions
+                  </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                {!loading && filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell className="px-5 text-center text-gray-500 dark:text-gray-400 h-[350px]" colSpan={8}>
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No users found</p>
+                        <p className="text-sm">Try adjusting your search or add a new user.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  currentUsers.map((user, index) => (
+                    <TableRow key={user._id}>
+                      <TableCell className="px-5 py-4 text-start">
+                        <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                          <Checkbox 
+                            checked={selectedIds.includes(user._id)}
+                            onChange={() => handleSelectOne(user._id)}
+                          />
+                          <span>{(currentPage - 1) * itemsPerPage + index + 1}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 sm:px-6 text-start">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 overflow-hidden rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 font-semibold text-lg">
+                            {user.username?.charAt(0).toUpperCase() || "U"}
+                          </div>
+                          <div>
+                            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                              {user.username}
+                            </span>
+                            <span className="block text-gray-500 text-theme-xs dark:text-gray-400 mt-0.5">
+                              {user.email}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-start text-sm">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {user.warnings >= 3 ? (
+                            <Badge color="error">Disqualified</Badge>
+                          ) : (
+                            <Badge color="success">Active</Badge>
+                          )}
+                          {user.warnings > 0 && user.warnings < 3 && (
+                            <Badge color="warning">{user.warnings}/3 Warnings</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold text-gray-800 dark:text-white/90">{user.level || 1}</span>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
+                        {user.xp || 0} XP
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-start text-sm">
+                        <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 font-medium border border-orange-200 dark:border-orange-500/20">
+                          🔥 {user.streak || 0}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-start text-gray-500 text-theme-sm dark:text-gray-400">
+                        {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-end">
+                        <div className="flex items-center justify-end gap-3">
+                          <button onClick={() => handleView(user)} className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="View User">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
+                          <button onClick={() => handleEdit(user)} className="text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors" title="Edit User">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                          </button>
+                          <button onClick={() => handleDelete(user)} className="text-gray-500 hover:text-error-500 dark:text-gray-400 dark:hover:text-error-400 transition-colors" title="Delete User">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
       

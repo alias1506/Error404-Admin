@@ -66,6 +66,22 @@ router.get('/user/:userId', async (req, res, next) => {
   }
 });
 
+// @desc    Bulk delete submissions
+// @route   POST /api/submissions/bulk-delete
+// @access  Private/Admin
+router.post('/bulk-delete', async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Invalid or missing ids array' });
+    }
+    const result = await Submission.deleteMany({ _id: { $in: ids } });
+    res.json({ success: true, message: `${result.deletedCount} submissions deleted` });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @desc    Delete a submission
 // @route   DELETE /api/submissions/:id
 // @access  Private/Admin

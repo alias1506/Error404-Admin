@@ -47,9 +47,24 @@ const deleteUserHandler = async (req, res) => {
   }
 };
 
+const bulkDeleteUsersHandler = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Invalid or missing ids array' });
+    }
+    const result = await User.deleteMany({ _id: { $in: ids } });
+    res.json({ message: `${result.deletedCount} users deleted successfully` });
+  } catch (error) {
+    console.error('Error bulk deleting users:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUsersHandler,
   updateUserHandler,
-  deleteUserHandler
+  deleteUserHandler,
+  bulkDeleteUsersHandler
 };

@@ -7,10 +7,17 @@ import {
 import Badge from "../ui/badge/Badge";
 interface EcommerceMetricsProps {
   customers: number;
+  customersTrend?: number;
   orders: number;
+  ordersTrend?: number;
 }
 
-export default function EcommerceMetrics({ customers = 0, orders = 0 }: EcommerceMetricsProps) {
+export default function EcommerceMetrics({ 
+  customers = 0, 
+  customersTrend = 0,
+  orders = 0,
+  ordersTrend = 0
+}: EcommerceMetricsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
       {/* <!-- Metric Item Start --> */}
@@ -28,9 +35,9 @@ export default function EcommerceMetrics({ customers = 0, orders = 0 }: Ecommerc
               {customers.toLocaleString()}
             </h4>
           </div>
-          <Badge color="success">
-            <ArrowUpIcon />
-            11.01%
+          <Badge color={customersTrend >= 0 ? "success" : "error"}>
+            {customersTrend >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
+            {Math.abs(customersTrend).toFixed(2)}%
           </Badge>
         </div>
       </div>
@@ -51,9 +58,9 @@ export default function EcommerceMetrics({ customers = 0, orders = 0 }: Ecommerc
             </h4>
           </div>
 
-          <Badge color="error">
-            <ArrowDownIcon />
-            9.05%
+          <Badge color={ordersTrend >= 0 ? "success" : "error"}>
+            {ordersTrend >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
+            {Math.abs(ordersTrend).toFixed(2)}%
           </Badge>
         </div>
       </div>

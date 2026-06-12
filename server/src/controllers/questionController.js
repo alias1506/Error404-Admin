@@ -162,3 +162,22 @@ exports.importQuestions = async (req, res) => {
     res.status(500).json({ message: 'Server error importing questions', error: error.message });
   }
 };
+
+// @desc    Bulk delete questions
+// @route   POST /api/questions/bulk-delete
+// @access  Public
+exports.bulkDeleteQuestions = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Invalid or missing ids array' });
+    }
+
+    const result = await Question.deleteMany({ _id: { $in: ids } });
+    
+    res.json({ message: `${result.deletedCount} questions removed` });
+  } catch (error) {
+    console.error('Error bulk deleting questions:', error);
+    res.status(500).json({ message: 'Server error bulk deleting questions', error: error.message });
+  }
+};

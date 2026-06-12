@@ -8,6 +8,8 @@ import { SwalToast } from "../../components/ui/toast/toast";
 import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import { Modal } from "../../components/ui/modal";
 import Editor from "@monaco-editor/react";
+import Checkbox from "../../components/form/input/Checkbox";
+import Loader from "../../components/common/Loader";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -31,6 +33,7 @@ export default function Submissions() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   
@@ -73,6 +76,18 @@ export default function Submissions() {
 
   const currentSubmissions = filteredSubmissions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentSubmissions.map(s => s._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   const handleDelete = (id: string) => {
     Swal.fire({
       title: 'Delete Submission?',
@@ -93,6 +108,36 @@ export default function Submissions() {
         }
       }
     });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you really want to delete ${selectedIds.length} submissions? This cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete them!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`${API_URL}/api/submissions/bulk-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds }),
+        });
+        if (response.ok) {
+          setSubmissions((prev) => prev.filter(s => !selectedIds.includes(s._id)));
+          setSelectedIds([]);
+          setTimeout(() => SwalToast.fire({ icon: 'success', title: 'Submissions deleted successfully' }), 300);
+        } else {
+          SwalToast.fire({ icon: 'error', title: 'Failed to delete submissions' });
+        }
+      } catch (error) {
+        SwalToast.fire({ icon: 'error', title: 'Server error' });
+      }
+    }
   };
 
   const handleViewUserSubmissions = async (user: any) => {
@@ -159,6 +204,18 @@ export default function Submissions() {
             />
           </div>
 
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-error-500 rounded-lg hover:bg-error-600 transition-colors w-full sm:w-auto justify-center"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete ({selectedIds.length})
+            </button>
+          )}
+
           <button 
             onClick={() => fetchSubmissions()}
             disabled={loading}
@@ -170,12 +227,25 @@ export default function Submissions() {
         </div>
       </div>
 
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-            <div className="max-w-full overflow-x-auto">
+          <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] min-h-[400px]">
+            {loading && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl">
+                <Loader text="Loading submissions..." />
+              </div>
+            )}
+            <div className={`max-w-full overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
               <Table className="table-fixed">
                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                   <TableRow>
-                    <TableCell isHeader className="w-[5%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">#</TableCell>
+                    <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      <div className="flex items-center gap-3">
+                        <Checkbox 
+                          checked={currentSubmissions.length > 0 && selectedIds.length === currentSubmissions.length}
+                          onChange={handleSelectAll}
+                        />
+                        <span>#</span>
+                      </div>
+                    </TableCell>
                     <TableCell isHeader className="w-[20%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">User</TableCell>
                     <TableCell isHeader className="w-[25%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Question</TableCell>
                     <TableCell isHeader className="w-[10%] px-5 py-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Lang</TableCell>
@@ -186,14 +256,10 @@ export default function Submissions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                  {loading ? (
+                  {!loading && filteredSubmissions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-gray-500 dark:text-gray-400">Loading submissions...</TableCell>
-                    </TableRow>
-                  ) : filteredSubmissions.length === 0 ? (
-                    <TableRow>
-                      <TableCell className="px-5 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
-                        <div className="flex flex-col items-center justify-center">
+                      <TableCell className="px-5 text-center text-gray-500 dark:text-gray-400 h-[350px]" colSpan={8}>
+                        <div className="flex flex-col items-center justify-center h-full">
                           <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
@@ -205,8 +271,14 @@ export default function Submissions() {
                   ) : (
                     currentSubmissions.map((sub, index) => (
                       <TableRow key={sub._id}>
-                        <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
-                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        <TableCell className="px-5 py-4 text-start">
+                          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                            <Checkbox 
+                              checked={selectedIds.includes(sub._id)}
+                              onChange={() => handleSelectOne(sub._id)}
+                            />
+                            <span>{(currentPage - 1) * itemsPerPage + index + 1}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="px-5 py-4 sm:px-6 text-start">
                           <div className="flex items-center gap-3">

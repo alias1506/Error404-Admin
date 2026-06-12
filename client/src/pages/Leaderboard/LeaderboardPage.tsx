@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import Badge from "../../components/ui/badge/Badge";
+import Loader from "../../components/common/Loader";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -62,11 +63,13 @@ export default function LeaderboardPage() {
       />
       <PageBreadcrumb pageTitle="Leaderboard" />
         
-      {loading ? (
-        <p className="text-gray-500 mt-6">Loading leaderboard...</p>
-      ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-          <div className="max-w-full overflow-x-auto">
+      <div className="mt-6 relative overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] min-h-[400px]">
+        {loading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl">
+            <Loader text="Loading leaderboard..." />
+          </div>
+        )}
+        <div className={`max-w-full overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
               <Table>
                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                   <TableRow>
@@ -83,8 +86,21 @@ export default function LeaderboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                  {users.map((user, index) => (
-                    <TableRow key={user._id || index}>
+                  {!loading && users.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="px-5 text-center text-gray-500 dark:text-gray-400 h-[350px]" colSpan={10}>
+                        <div className="flex flex-col items-center justify-center h-full">
+                          <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No leaderboard data</p>
+                          <p className="text-sm">Leaderboard will appear here once users start solving questions.</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((user, index) => (
+                      <TableRow key={user._id || index}>
                       <TableCell className="px-5 py-4 text-start text-sm text-gray-500 dark:text-gray-400">
                         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold shadow-sm ${getRankStyle(index, user.rankScore || 0)}`}>
                           #{index + 1}
@@ -145,19 +161,12 @@ export default function LeaderboardPage() {
                         <span className="font-bold text-gray-800 dark:text-white/90">{user.rankScore || 0}</span>
                       </TableCell>
                     </TableRow>
-                  ))}
-                  {users.length === 0 && (
-                    <TableRow>
-                      <TableCell className="text-center py-8 text-gray-500">
-                        No users found.
-                      </TableCell>
-                    </TableRow>
+                  ))
                   )}
                 </TableBody>
               </Table>
             </div>
         </div>
-      )}
     </>
   );
 }

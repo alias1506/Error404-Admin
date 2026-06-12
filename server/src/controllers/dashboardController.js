@@ -4,8 +4,22 @@ const getDashboardStats = async () => {
   try {
     const totalUsers = await User.countDocuments();
     
-    // We can define active users as users who have logged in. We'll just use totalUsers as a placeholder if no complex logic.
-    const activeUsers = totalUsers;
+    const currentMonth = new Date().getMonth();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+
+    // Active users: logged in within the last 7 days
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    
+    const activeUsers = await User.countDocuments({ lastLogin: { $gte: sevenDaysAgo } });
+    const lastWeekActiveUsers = await User.countDocuments({ lastLogin: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } });
+    
+    let activeUsersTrend = 0;
+    if (lastWeekActiveUsers > 0) {
+      activeUsersTrend = ((activeUsers - lastWeekActiveUsers) / lastWeekActiveUsers) * 100;
+    } else if (activeUsers > 0) {
+      activeUsersTrend = 100;
+    }
     
     // Monthly registrations (mapped to 'sales' in the template)
     const monthlySales = Array(12).fill(0);
@@ -16,6 +30,13 @@ const getDashboardStats = async () => {
         monthlySales[month]++;
       }
     });
+
+    let customersTrend = 0;
+    if (monthlySales[lastMonth] > 0) {
+      customersTrend = ((monthlySales[currentMonth] - monthlySales[lastMonth]) / monthlySales[lastMonth]) * 100;
+    } else if (monthlySales[currentMonth] > 0) {
+      customersTrend = 100;
+    }
 
     // Composite leaderboard ranking:
     //   Score = (xp * 0.5) + (solvedCount * 30 * 0.3) + (attemptCount * 20 * 0.2)
@@ -56,7 +77,9 @@ const getDashboardStats = async () => {
 
     return {
       customers: totalUsers,
+      customersTrend: customersTrend,
       orders: activeUsers,
+      ordersTrend: activeUsersTrend,
       monthlySales: monthlySales,
       statistics: Array(7).fill(0), // Placeholder for weekly stats
       revenue: 0,
@@ -67,7 +90,9 @@ const getDashboardStats = async () => {
     console.error('Error fetching dashboard stats:', err);
     return {
       customers: 0,
+      customersTrend: 0,
       orders: 0,
+      ordersTrend: 0,
       monthlySales: Array(12).fill(0),
       statistics: Array(7).fill(0),
       revenue: 0,
