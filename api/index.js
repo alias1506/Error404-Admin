@@ -42,4 +42,13 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Error404 Admin Backend is running!' });
 });
 
+app.get('/api/env-check', (req, res) => {
+  const uri = process.env.MONGO_URI || '';
+  res.json({
+    hasMongoUri: !!process.env.MONGO_URI,
+    uriPrefix: uri.substring(0, 30) + '...',
+    databaseName: uri.includes('error404') ? 'error404 found' : 'error404 missing'
+  });
+});
+
 module.exports = app;
