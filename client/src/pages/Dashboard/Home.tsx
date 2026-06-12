@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useState, useCallback } from "react";
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import MonthlySalesChart from "../../components/ecommerce/MonthlySalesChart";
 import StatisticsChart from "../../components/ecommerce/StatisticsChart";
@@ -7,9 +6,7 @@ import Leaderboard from "../../components/ecommerce/Leaderboard";
 
 import PageMeta from "../../components/common/PageMeta";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const socket = io(API_URL);
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export default function Home() {
   const [stats, setStats] = useState({
@@ -22,20 +19,19 @@ export default function Home() {
     leaderboard: []
   });
 
-  useEffect(() => {
+  const fetchStats = useCallback(() => {
     fetch(`${API_URL}/api/dashboard/stats`)
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(console.error);
-
-    socket.on("dashboard-stats-update", (data) => {
-      setStats(data);
-    });
-
-    return () => {
-      socket.off("dashboard-stats-update");
-    };
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [fetchStats]);
+
 
   return (
     <>

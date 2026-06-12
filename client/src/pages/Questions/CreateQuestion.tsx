@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import Editor from "@monaco-editor/react";
 import ImportJsonModal from "./ImportJsonModal";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 const ALL_LANGUAGES = [
   { id: "c", name: "C" },

@@ -9,7 +9,7 @@ import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import { Modal } from "../../components/ui/modal";
 import Editor from "@monaco-editor/react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 interface Submission {
   _id: string;

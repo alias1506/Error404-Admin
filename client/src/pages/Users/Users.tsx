@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import React, { useEffect, useState, useCallback } from "react";
 import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 import { SwalToast } from "../../components/ui/toast/toast";
 import { Modal } from "../../components/ui/modal";
@@ -32,8 +31,6 @@ interface User {
   warnings: number;
 }
 
-const socket = io(API_URL); // Connect to admin backend
-
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
@@ -45,30 +42,23 @@ export default function Users() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/users`);
-        if (response.ok) {
-          const data = await response.json();
-          setUsers(data);
-        }
-      } catch (error) {
-        console.error("Failed to load initial users:", error);
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/users`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
       }
-    };
-    
-    fetchInitialData();
-
-    socket.on("users-update", (data: User[]) => {
-      setUsers(data);
-      setIsRefreshing(false);
-    });
-
-    return () => {
-      socket.off("users-update");
-    };
+    } catch (error) {
+      console.error("Failed to load users:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [fetchUsers]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

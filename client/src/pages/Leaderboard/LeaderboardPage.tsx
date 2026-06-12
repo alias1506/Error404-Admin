@@ -10,7 +10,7 @@ import {
 } from "../../components/ui/table";
 import Badge from "../../components/ui/badge/Badge";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 interface LeaderboardUser {
   _id: string;

@@ -4,7 +4,7 @@ import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import Pagination from "../../components/common/Pagination";
 import Select from "../../components/form/Select";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 import { SwalToast } from "../../components/ui/toast/toast";
 
