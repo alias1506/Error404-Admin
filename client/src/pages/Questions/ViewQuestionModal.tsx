@@ -8,10 +8,9 @@ interface ViewQuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   questionId: string | null;
-  onEditClick: () => void;
 }
 
-export default function ViewQuestionModal({ isOpen, onClose, questionId, onEditClick }: ViewQuestionModalProps) {
+export default function ViewQuestionModal({ isOpen, onClose, questionId }: ViewQuestionModalProps) {
   const [question, setQuestion] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -24,7 +24,6 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 import { SwalToast } from "../../components/ui/toast/toast";
 
 export default function QuestionsList() {
-  const navigate = useNavigate();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -246,7 +245,6 @@ export default function QuestionsList() {
         isOpen={isViewModalOpen} 
         onClose={() => { setIsViewModalOpen(false); setSelectedQuestionId(null); }} 
         questionId={selectedQuestionId} 
-        onEditClick={() => setIsEditModalOpen(true)}
       />
       
       <EditQuestionModal
