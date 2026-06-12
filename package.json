@@ -4,7 +4,7 @@
   "scripts": {
     "client": "npm run dev --prefix client",
     "server": "npm run dev --prefix server",
-    "dev": "node scripts/clear-ports.js && concurrently \"npm run client\" \"npm run server\""
+    "dev": "node scripts/clear-ports.js && npx concurrently \"npm run client\" \"npm run server\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
