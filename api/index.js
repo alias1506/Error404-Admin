@@ -51,4 +51,16 @@ app.get('/api/env-check', (req, res) => {
   });
 });
 
+app.get('/api/db-test', async (req, res) => {
+  try {
+    await connectDB();
+    const mongoose = require('mongoose');
+    const state = mongoose.connection.readyState;
+    const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    res.json({ status: 'success', connectionState: states[state] || state });
+  } catch (error) {
+    res.json({ status: 'error', message: error.message, stack: error.stack });
+  }
+});
+
 module.exports = app;
