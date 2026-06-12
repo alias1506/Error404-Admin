@@ -8,6 +8,11 @@ if (!cached) {
   cached = global._mongooseConnection = { conn: null, promise: null };
 }
 
+const dns = require('dns');
+
+// Use Google's public DNS to resolve MongoDB Atlas SRV records reliably
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 async function connectDB() {
   if (cached.conn && cached.conn.readyState === 1) {
     return cached.conn;
