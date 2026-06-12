@@ -8,6 +8,7 @@ const { getAllUsers } = require('./src/controllers/userController');
 
 const PORT = process.env.PORT || 8000;
 const server = http.createServer(app);
+let pollingInterval = null;
 
 const io = new Server(server, {
   cors: {
@@ -16,22 +17,31 @@ const io = new Server(server, {
   }
 });
 
-connectDB().then(() => {
+connectDB().then((connected) => {
+  if (!connected) {
+    console.warn('MongoDB is unavailable. Starting without realtime database updates.');
+    return;
+  }
+
   const changeStream = User.watch();
-  
+
   changeStream.on('change', async (change) => {
     console.log('Database change detected:', change.operationType);
     const users = await getAllUsers();
     io.emit('users-update', users);
-    
+
     const { getDashboardStats } = require('./src/controllers/dashboardController');
     const stats = await getDashboardStats();
     io.emit('dashboard-stats-update', stats);
   });
-  
+
   changeStream.on('error', (err) => {
     console.error('Change stream error. Using polling fallback.', err.message);
-    setInterval(async () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    pollingInterval = setInterval(async () => {
       const users = await getAllUsers();
       io.emit('users-update', users);
 
