@@ -75,6 +75,12 @@ export default function ImportJsonModal({ isOpen, onClose, onSuccess }: ImportJs
           if (formatted.length > 0) setSelectedRound(formatted[0].value);
         })
         .catch(console.error);
+    } else {
+      setRounds([]);
+      setSelectedRound("");
+      setFile(null);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   }, [isOpen]);
 
