@@ -43,9 +43,12 @@ export default function EditQuestionModal({ isOpen, onClose, questionId, onSucce
   const [languageCodes, setLanguageCodes] = useState<LanguageCode[]>([]);
   const [selectedLanguageToAdd, setSelectedLanguageToAdd] = useState(ALL_LANGUAGES[0].id);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setIsLoading(true);
+      
       const fetchRounds = async () => {
         try {
           const response = await fetch(`${API_URL}/api/rounds`);
@@ -57,31 +60,44 @@ export default function EditQuestionModal({ isOpen, onClose, questionId, onSucce
           console.error("Failed to fetch rounds:", error);
         }
       };
-      fetchRounds();
 
-      if (questionId) {
-        const fetchQuestion = async () => {
-          try {
-            const response = await fetch(`${API_URL}/api/questions/${questionId}`);
-            if (response.ok) {
-              const data = await response.json();
-              setFormData({
-                title: data.title,
-                difficulty: data.difficulty,
-                xpReward: data.xpReward.toString(),
-                roundId: data.roundId?._id || "",
-                expectedOutput: data.expectedOutput || ""
-              });
-              
-              setLanguageCodes(data.codes);
-              if (data.codes.length > 0) setActiveTab(data.codes[0].language);
-            }
-          } catch (error) {
-            console.error("Failed to fetch question for edit:", error);
+      const fetchQuestion = async () => {
+        try {
+          const response = await fetch(`${API_URL}/api/questions/${questionId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setFormData({
+              title: data.title,
+              difficulty: data.difficulty,
+              xpReward: data.xpReward.toString(),
+              roundId: data.roundId?._id || "",
+              expectedOutput: data.expectedOutput || ""
+            });
+            
+            setLanguageCodes(data.codes);
+            if (data.codes.length > 0) setActiveTab(data.codes[0].language);
           }
-        };
-        fetchQuestion();
-      }
+        } catch (error) {
+          console.error("Failed to fetch question for edit:", error);
+        }
+      };
+
+      Promise.all([
+        fetchRounds(),
+        questionId ? fetchQuestion() : Promise.resolve()
+      ]).finally(() => {
+        setIsLoading(false);
+      });
+    } else {
+      setFormData({
+        title: "",
+        difficulty: "Easy",
+        xpReward: "10",
+        roundId: "",
+        expectedOutput: "",
+      });
+      setLanguageCodes([]);
+      setActiveTab(null);
     }
   }, [isOpen, questionId]);
 
@@ -192,6 +208,11 @@ export default function EditQuestionModal({ isOpen, onClose, questionId, onSucce
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[1000px] p-6 !rounded-[24px]">
+      {isLoading ? (
+        <div className="flex items-center justify-center h-[500px] w-full">
+          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
       <div className="flex flex-col h-[85vh] min-h-[600px]">
         <div className="mb-4 border-b border-gray-200 pb-3 dark:border-gray-800 flex justify-between items-center pr-8">
           <div>
@@ -454,6 +475,7 @@ export default function EditQuestionModal({ isOpen, onClose, questionId, onSucce
           </div>
         </form>
       </div>
+      )}
     </Modal>
   );
 }
