@@ -5,8 +5,20 @@ const Round = require('../models/Round');
 // @access  Public (or Admin, depending on auth rules)
 exports.getRounds = async (req, res, next) => {
   try {
-    const rounds = await Round.find({}).sort({ createdAt: 1 });
-    res.status(200).json(rounds);
+    const rounds = await Round.find({}).sort({ createdAt: 1 }).lean();
+    const Question = require('../models/Question');
+    
+    const roundsWithCount = await Promise.all(
+      rounds.map(async (round) => {
+        const count = await Question.countDocuments({ roundId: round._id });
+        return {
+          ...round,
+          questionCount: count
+        };
+      })
+    );
+    
+    res.status(200).json(roundsWithCount);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

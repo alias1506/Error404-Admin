@@ -17,6 +17,7 @@ type Round = {
   status: "Upcoming" | "Active" | "Completed";
   remainingSeconds?: number;
   updatedAt?: string;
+  questionCount?: number;
 };
 
 export default function RoundsPage() {
@@ -47,6 +48,7 @@ export default function RoundsPage() {
             duration: r.duration,
             status: currentStatus,
             updatedAt: r.updatedAt,
+            questionCount: r.questionCount || 0,
           };
         });
         // Sort ascending by MongoDB ObjectId (chronological order)
@@ -412,6 +414,7 @@ export default function RoundsPage() {
                         </div>
                       </th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm">Round Name</th>
+                      <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Questions</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Duration</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm w-32">Status</th>
                       <th className="pb-3 px-2 font-medium text-gray-500 dark:text-gray-400 text-sm text-right w-[140px]">Actions</th>
@@ -444,6 +447,11 @@ export default function RoundsPage() {
                           </td>
                           <td className="py-4 px-2">
                             <div className="font-medium text-gray-800 dark:text-gray-200">{round.name}</div>
+                          </td>
+                          <td className="py-4 px-2">
+                            <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300 rounded-full">
+                              {round.questionCount || 0}
+                            </span>
                           </td>
                           <td className="py-4 px-2">
                             <div className="text-sm text-gray-700 dark:text-gray-300 font-mono">
