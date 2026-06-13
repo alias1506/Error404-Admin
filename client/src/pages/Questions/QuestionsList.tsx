@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { CustomSwal as Swal } from "../../components/ui/swal/swal";
 import PageMeta from "../../components/common/PageMeta";
@@ -245,19 +244,15 @@ export default function QuestionsList() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] min-h-[400px]">
+      <div className="relative min-h-[400px]">
         {loading && (
-          <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl"></div>
-        )}
-        {loading && createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
-            <div className="pointer-events-auto">
+          <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-sm dark:bg-gray-900/60 rounded-xl">
+            <div className="sticky top-[50vh] left-1/2 -translate-x-1/2 -translate-y-1/2 w-fit">
               <Loader text="Loading questions..." />
             </div>
-          </div>,
-          document.body
+          </div>
         )}
-        <div className={`max-w-full overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
+        <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] max-w-full overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}>
           <Table className="table-fixed">
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
