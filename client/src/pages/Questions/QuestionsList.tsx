@@ -53,6 +53,7 @@ export default function QuestionsList() {
   };
 
   const loadQuestions = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/questions`);
       if (response.ok) {
