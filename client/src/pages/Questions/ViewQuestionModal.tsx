@@ -73,6 +73,15 @@ export default function ViewQuestionModal({ isOpen, onClose, questionId }: ViewQ
             </div>
           </div>
 
+          {question.expectedOutput && (
+            <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 mb-6 border border-gray-200 dark:border-gray-800 w-full">
+              <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Expected Output</h4>
+              <pre className="text-sm font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                {question.expectedOutput}
+              </pre>
+            </div>
+          )}
+
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 w-full flex flex-col flex-1 min-h-0 bg-white dark:bg-transparent">
             {question.languages.length > 0 ? (
               <div className="flex flex-col h-full rounded-xl overflow-hidden">

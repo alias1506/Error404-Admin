@@ -179,6 +179,7 @@ export default function ImportJsonModal({ isOpen, onClose, onSuccess }: ImportJs
         
         onSuccess();
         onClose();
+        setFile(null);
         setIsUploading(false);
       }, 500);
 
